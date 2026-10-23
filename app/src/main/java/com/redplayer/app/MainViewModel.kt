@@ -40,6 +40,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var loading by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
 
+    // Spotify (opcional): token colado pelo usuário, guardado só no aparelho
+    private val prefs = app.getSharedPreferences("spotify", 0)
+    var spotifyToken by mutableStateOf(prefs.getString("token", "") ?: "")
+        private set
+    var spotifyTop by mutableStateOf<List<Song>>(emptyList())
+    var showSpotify by mutableStateOf(false)
+
     // UI global
     var pickSong by mutableStateOf<Song?>(null)
     var showNewPlaylist by mutableStateOf(false)
@@ -80,6 +87,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
         }, MoreExecutors.directExecutor())
         loadCharts(0); loadTrending()
+        if (spotifyToken.isNotBlank()) loadSpotifyTop()
     }
 
     // ---------- catálogo ----------
@@ -104,6 +112,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun loadLocal() { local = LocalMusic.load(getApplication()) }
+
+    fun saveSpotifyToken(t: String) {
+        spotifyToken = t.trim().removePrefix("Bearer ").trim()
+        prefs.edit().putString("token", spotifyToken).apply()
+        if (spotifyToken.isNotEmpty()) loadSpotifyTop() else spotifyTop = emptyList()
+    }
+
+    fun loadSpotifyTop() = viewModelScope.launch {
+        try {
+            val r = Net.api.spotifyTop("https://api.spotify.com/v1/me/top/tracks", "Bearer $spotifyToken")
+            spotifyTop = r.items.mapNotNull { t ->
+                try { Deezer.match("${t.artists.firstOrNull()?.name ?: ""} ${t.name}") } catch (e: Exception) { null }
+            }
+            toast = "Spotify: ${spotifyTop.size} faixas do seu top carregadas"
+        } catch (e: Exception) {
+            toast = "Token do Spotify inválido ou expirado"
+        }
+    }
 
     // ---------- reprodução ----------
     fun play(list: List<Song>, index: Int, shuffleOn: Boolean = false, refresh: Boolean = false) {

@@ -78,6 +78,8 @@ fun HomeScreen(vm: MainViewModel) {
             }
             Status(vm)
         }
+        if (vm.spotifyTop.isNotEmpty()) item { SectionTitle("Seu top do Spotify (prévias 30s)") }
+        itemsIndexed(vm.spotifyTop, key = { _, s -> "s" + s.id }) { i, s -> SongRow(s, vm, { vm.play(vm.spotifyTop, i) }) }
         if (vm.charts.isNotEmpty()) item {
             Row(Modifier.padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) { SectionTitle("Top músicas (prévias 30s)") }
@@ -141,6 +143,8 @@ fun LibraryScreen(vm: MainViewModel, onOpen: (Detail) -> Unit, onLocal: () -> Un
             Text("Sua biblioteca", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(16.dp))
             LibraryCard(Icons.Default.Favorite, "Favoritas", "${vm.lib.favorites.size} músicas") { onOpen(Detail.Favs) }
             LibraryCard(Icons.Default.History, "Tocadas recentemente", "${vm.lib.recents.size} músicas") { onOpen(Detail.Recents) }
+            LibraryCard(Icons.Default.Link, "Conectar Spotify",
+                if (vm.spotifyToken.isBlank()) "Cole um token para ver seu top" else "Conectado (${vm.spotifyTop.size} faixas)") { vm.showSpotify = true }
             LibraryCard(Icons.Default.PhoneAndroid, "No aparelho", "Arquivos de áudio locais") { onLocal() }
             Row(Modifier.fillMaxWidth().padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) { SectionTitle("Playlists") }

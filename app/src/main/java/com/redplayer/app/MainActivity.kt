@@ -118,6 +118,7 @@ fun App(vm: MainViewModel) {
         ModalBottomSheet(onDismissRequest = { vm.showQueue = false }, containerColor = Black) { QueueSheet(vm) }
     }
     PickPlaylistDialog(vm)
+    SpotifyDialog(vm)
     NewPlaylistDialog(vm)
 }
 
@@ -192,4 +193,25 @@ fun MiniPlayer(vm: MainViewModel, onOpen: () -> Unit) {
         }
         IconButton({ vm.next() }) { Icon(Icons.Default.SkipNext, "Próxima") }
     }
+}
+
+@Composable
+fun SpotifyDialog(vm: MainViewModel) {
+    if (!vm.showSpotify) return
+    var t by remember { mutableStateOf(vm.spotifyToken) }
+    AlertDialog(
+        onDismissRequest = { vm.showSpotify = false }, containerColor = Surface2,
+        title = { Text("Conectar Spotify") },
+        text = {
+            Column {
+                Text("Cole um token de acesso da Spotify Web API (escopo user-top-read). Ele expira em ~1 hora e fica salvo só neste aparelho.",
+                    color = Grey, style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(t, { t = it }, maxLines = 4, placeholder = { Text("Token") },
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Red, cursorColor = Red))
+            }
+        },
+        confirmButton = { TextButton({ vm.saveSpotifyToken(t); vm.showSpotify = false }) { Text("Salvar", color = Red) } },
+        dismissButton = { TextButton({ vm.saveSpotifyToken(""); vm.showSpotify = false }) { Text("Desconectar", color = Grey) } }
+    )
 }

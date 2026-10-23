@@ -16,6 +16,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.Query
 import retrofit2.http.Url
 
@@ -63,6 +64,10 @@ fun MediaItem.toSong() = Song(
 @Serializable data class DzArtist(val name: String)
 @Serializable data class DzAlbum(val title: String = "", @SerialName("cover_big") val cover: String? = null)
 
+// ---------- Spotify Web API (opcional, token do usuário; só metadados) ----------
+@Serializable data class SpTop(val items: List<SpTrack> = emptyList())
+@Serializable data class SpTrack(val name: String, val artists: List<AUser> = emptyList())
+
 // ---------- LRCLIB (letras, gratuito) ----------
 @Serializable data class LyricsResp(val plainLyrics: String? = null)
 
@@ -72,6 +77,9 @@ interface Api {
                             @Query("query") q: String? = null, @Query("limit") limit: Int = 40): TracksResp
     @GET suspend fun deezer(@Url url: String, @Query("q") q: String? = null,
                             @Query("limit") limit: Int = 50): DzResp
+    @GET suspend fun spotifyTop(@Url url: String, @Header("Authorization") auth: String,
+                                @Query("time_range") range: String = "long_term",
+                                @Query("limit") limit: Int = 20): SpTop
     @GET suspend fun deezerTrack(@Url url: String): DzTrack
     @GET suspend fun lyrics(@Url url: String, @Query("artist_name") artist: String,
                             @Query("track_name") title: String): LyricsResp
@@ -109,6 +117,8 @@ object Deezer {
 
     suspend fun chart(genre: Int) = map(Net.api.deezer("$B/chart/$genre/tracks", limit = 50))
     suspend fun search(q: String) = map(Net.api.deezer("$B/search", q = q, limit = 50))
+    suspend fun match(q: String): Song? =
+        Net.api.deezer("$B/search", q = q, limit = 3).data.firstOrNull { it.preview.isNotBlank() }?.let { toSong(it) }
 
     /** Links de prévia expiram; renova antes de tocar músicas salvas. */
     suspend fun fresh(songs: List<Song>): List<Song> = coroutineScope {
