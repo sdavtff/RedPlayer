@@ -15,7 +15,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.Header
 import retrofit2.http.Query
 import retrofit2.http.Url
@@ -68,6 +70,17 @@ fun MediaItem.toSong() = Song(
 @Serializable data class SpTop(val items: List<SpTrack> = emptyList())
 @Serializable data class SpTrack(val name: String, val artists: List<AUser> = emptyList())
 
+// ---------- MusicAPI (api.musicapi.com): busca unificada em vários serviços ----------
+@Serializable data class MaReq(val track: String, val artist: String? = null,
+                               val type: String = "track", val sources: List<String>)
+@Serializable data class MaIntro(val sources: List<String> = emptyList())
+@Serializable data class MaResp(val tracks: List<MaItem> = emptyList())
+@Serializable data class MaItem(val source: String = "", val status: String = "", val data: MaData? = null)
+@Serializable data class MaData(
+    val externalId: String = "", val name: String = "", val artistNames: List<String>? = null,
+    val albumName: String? = null, val imageUrl: String? = null, val previewUrl: String? = null
+)
+
 // ---------- LRCLIB (letras, gratuito) ----------
 @Serializable data class LyricsResp(val plainLyrics: String? = null)
 
@@ -80,6 +93,9 @@ interface Api {
     @GET suspend fun spotifyTop(@Url url: String, @Header("Authorization") auth: String,
                                 @Query("time_range") range: String = "long_term",
                                 @Query("limit") limit: Int = 20): SpTop
+    @GET suspend fun maIntro(@Url url: String, @Header("Authorization") auth: String): MaIntro
+    @POST suspend fun maSearch(@Url url: String, @Header("Authorization") auth: String,
+                               @Body body: MaReq): MaResp
     @GET suspend fun deezerTrack(@Url url: String): DzTrack
     @GET suspend fun lyrics(@Url url: String, @Query("artist_name") artist: String,
                             @Query("track_name") title: String): LyricsResp
@@ -87,7 +103,7 @@ interface Api {
 }
 
 object Net {
-    val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; explicitNulls = false }
     val api: Api = Retrofit.Builder().baseUrl("https://api.audius.co/")
         .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .build().create(Api::class.java)
@@ -129,6 +145,25 @@ object Deezer {
                 catch (e: Exception) { s }
             }
         }.awaitAll()
+    }
+}
+
+object MusicApi {
+    private const val B = "https://api.musicapi.com"
+    private var sources: List<String>? = null
+
+    /** Usa só o Client ID (público) com o header "Token", válido nas rotas /public. */
+    suspend fun search(clientId: String, q: String): List<Song> {
+        val auth = "Token $clientId"
+        val src = sources ?: Net.api.maIntro("$B/public/search/introspection", auth).sources.also { sources = it }
+        val r = Net.api.maSearch("$B/public/search", auth, MaReq(track = q, sources = src))
+        return r.tracks.mapNotNull { t ->
+            val d = t.data ?: return@mapNotNull null
+            val p = d.previewUrl
+            if (p.isNullOrBlank()) null
+            else Song("ma-${t.source}-${d.externalId}", d.name, d.artistNames?.joinToString(", ") ?: "",
+                d.imageUrl, p, 30_000L, true, d.albumName ?: "")
+        }.distinctBy { it.id }
     }
 }
 

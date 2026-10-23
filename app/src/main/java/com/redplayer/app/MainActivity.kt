@@ -119,6 +119,7 @@ fun App(vm: MainViewModel) {
     }
     PickPlaylistDialog(vm)
     SpotifyDialog(vm)
+    MusicApiDialog(vm)
     NewPlaylistDialog(vm)
 }
 
@@ -213,5 +214,26 @@ fun SpotifyDialog(vm: MainViewModel) {
         },
         confirmButton = { TextButton({ vm.saveSpotifyToken(t); vm.showSpotify = false }) { Text("Salvar", color = Red) } },
         dismissButton = { TextButton({ vm.saveSpotifyToken(""); vm.showSpotify = false }) { Text("Desconectar", color = Grey) } }
+    )
+}
+
+@Composable
+fun MusicApiDialog(vm: MainViewModel) {
+    if (!vm.showMusicApi) return
+    var t by remember { mutableStateOf(vm.maClientId) }
+    AlertDialog(
+        onDismissRequest = { vm.showMusicApi = false }, containerColor = Surface2,
+        title = { Text("Conectar MusicAPI") },
+        text = {
+            Column {
+                Text("Cole apenas o CLIENT ID (público). Nunca cole o Client Secret aqui. Fica salvo só neste aparelho.",
+                    color = Grey, style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(t, { t = it }, singleLine = true, placeholder = { Text("Client ID") },
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Red, cursorColor = Red))
+            }
+        },
+        confirmButton = { TextButton({ vm.saveMaClientId(t); vm.showMusicApi = false }) { Text("Salvar", color = Red) } },
+        dismissButton = { TextButton({ vm.showMusicApi = false }) { Text("Cancelar", color = Grey) } }
     )
 }

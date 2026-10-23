@@ -19,7 +19,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-enum class Source(val label: String) { DEEZER("Famosas (prévia 30s)"), AUDIUS("Completas (Audius)") }
+enum class Source(val label: String) { DEEZER("Famosas (30s)"), AUDIUS("Completas (Audius)"), MUSICAPI("MusicAPI") }
 
 val Genres = listOf(0 to "Geral", 132 to "Pop", 116 to "Rap/Hip Hop", 152 to "Rock", 113 to "Dance",
     165 to "R&B", 75 to "Brasil", 129 to "Jazz", 98 to "Clássica", 464 to "Metal",
@@ -46,6 +46,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var spotifyTop by mutableStateOf<List<Song>>(emptyList())
     var showSpotify by mutableStateOf(false)
+
+    // MusicAPI: Client ID colado pelo usuário, guardado só no aparelho
+    private val maPrefs = app.getSharedPreferences("musicapi", 0)
+    var maClientId by mutableStateOf(maPrefs.getString("clientId", "") ?: "")
+        private set
+    var showMusicApi by mutableStateOf(false)
+    fun saveMaClientId(id: String) {
+        maClientId = id.trim(); maPrefs.edit().putString("clientId", maClientId).apply()
+    }
 
     // UI global
     var pickSong by mutableStateOf<Song?>(null)
@@ -105,8 +114,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (q.isBlank()) return@launch
         loading = true; error = null
         try {
-            results = if (source == Source.DEEZER) Deezer.search(q) else Audius.search(q)
-            if (results.isEmpty()) error = "Nada encontrado para \"$q\"."
+            results = when (source) {
+                Source.DEEZER -> Deezer.search(q)
+                Source.AUDIUS -> Audius.search(q)
+                Source.MUSICAPI ->
+                    if (maClientId.isBlank()) { error = "Configure o Client ID em Biblioteca > MusicAPI."; emptyList() }
+                    else MusicApi.search(maClientId, q)
+            }
+            if (results.isEmpty() && error == null) error = "Nada encontrado para \"$q\"."
         } catch (e: Exception) { error = "Erro na busca. Verifique a internet." }
         loading = false
     }

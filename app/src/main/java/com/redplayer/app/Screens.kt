@@ -1,6 +1,8 @@
 package com.redplayer.app
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -108,7 +110,7 @@ fun SearchScreen(vm: MainViewModel) {
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Red, cursorColor = Red),
             trailingIcon = { IconButton({ vm.search(q) }) { Icon(Icons.Default.Search, "Buscar", tint = Red) } })
-        Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Source.entries.forEach { s ->
                 FilterChip(vm.source == s, { vm.source = s; if (q.isNotBlank()) vm.search(q) }, { Text(s.label) },
                     colors = FilterChipDefaults.filterChipColors(
@@ -145,6 +147,8 @@ fun LibraryScreen(vm: MainViewModel, onOpen: (Detail) -> Unit, onLocal: () -> Un
             LibraryCard(Icons.Default.History, "Tocadas recentemente", "${vm.lib.recents.size} músicas") { onOpen(Detail.Recents) }
             LibraryCard(Icons.Default.Link, "Conectar Spotify",
                 if (vm.spotifyToken.isBlank()) "Cole um token para ver seu top" else "Conectado (${vm.spotifyTop.size} faixas)") { vm.showSpotify = true }
+            LibraryCard(Icons.Default.Link, "Conectar MusicAPI",
+                if (vm.maClientId.isBlank()) "Cole seu Client ID" else "Client ID configurado") { vm.showMusicApi = true }
             LibraryCard(Icons.Default.PhoneAndroid, "No aparelho", "Arquivos de áudio locais") { onLocal() }
             Row(Modifier.fillMaxWidth().padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) { SectionTitle("Playlists") }
